@@ -1,0 +1,28 @@
+{
+  "updated": "2026-08-02",
+  "note": "Rates are integer NANODOLLARS per token (1 dollar = 1e9 nanodollars). TODO: real rates to be supplied; all values are placeholder 0 for now.",
+  "providers": {
+    "anthropic": {
+      "source": "https://www.anthropic.com/pricing",
+      "models": {
+        "claude-opus-4-8": { "input": 0, "output": 0, "cacheWrite": 0, "cacheRead": 0 },
+        "claude-sonnet-5": { "input": 0, "output": 0, "cacheWrite": 0, "cacheRead": 0 },
+        "claude-haiku-4-5": { "input": 0, "output": 0, "cacheWrite": 0, "cacheRead": 0 }
+      }
+    },
+    "openai": {
+      "source": "https://openai.com/api/pricing/",
+      "models": {
+        "gpt-4o": { "input": 0, "output": 0, "cacheWrite": 0, "cacheRead": 0 },
+        "gpt-4o-mini": { "input": 0, "output": 0, "cacheWrite": 0, "cacheRead": 0 }
+      }
+    },
+    "gemini": {
+      "source": "https://ai.google.dev/pricing",
+      "models": {
+        "gemini-2.5-pro": { "input": 0, "output": 0, "cacheWrite": 0, "cacheRead": 0 },
+        "gemini-2.5-flash": { "input": 0, "output": 0, "cacheWrite": 0, "cacheRead": 0 }
+      }
+    }
+  }
+}
