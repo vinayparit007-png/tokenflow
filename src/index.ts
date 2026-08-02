@@ -29,3 +29,21 @@ export type { Turn, ModelAggregate } from "./session.js";
 export { SessionCost } from "./session.js";
 
 export { formatNanoUSD, formatCost } from "./format.js";
+
+export type { Message, ChatRequest, StreamEvent, StreamOptions, Provider } from "./providers/index.js";
+export {
+  providers,
+  getProvider,
+  ProviderError,
+  anthropicProvider,
+  openaiProvider,
+  geminiProvider,
+  buildAnthropicRequest,
+  buildOpenAIRequest,
+  buildGeminiRequest,
+  withRetry,
+  abortableSleep,
+  parseSSE,
+  isAbortError,
+  FixtureRecorder,
+} from "./providers/index.js";
