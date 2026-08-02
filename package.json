@@ -5,7 +5,7 @@
   "type": "module",
   "license": "MIT",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.5"
   },
   "exports": {
     ".": "./dist/index.js"
@@ -24,7 +24,7 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "@types/node": "^20.14.0",
+    "@types/node": "^24.13.3",
     "fast-check": "^3.19.0",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"

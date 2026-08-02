@@ -30,6 +30,16 @@ export { SessionCost } from "./session.js";
 
 export { formatNanoUSD, formatCost } from "./format.js";
 
+export type {
+  StoredTurn,
+  SessionSummary,
+  TurnMatch,
+  TurnCostRow,
+} from "./history/store.js";
+export { HistoryStore, defaultDbPath, sanitizeFtsQuery } from "./history/store.js";
+export type { CostBucket } from "./history/report.js";
+export { parseSince, byModel, byDay, total } from "./history/report.js";
+
 export type { Message, ChatRequest, StreamEvent, StreamOptions, Provider } from "./providers/index.js";
 export {
   providers,

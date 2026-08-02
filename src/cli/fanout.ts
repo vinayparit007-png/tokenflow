@@ -87,6 +87,22 @@ export async function runFanout(cmd: ChatCommand, deps: CliDeps): Promise<number
 
   terminal.cost(`\n${comparisonTable(results, deps, terminal)}\n`);
 
+  // Record each successful model as its own turn (all share the prompt).
+  for (const r of results) {
+    if (r.error) continue;
+    deps.onTurn?.({
+      provider: r.provider,
+      model: r.model,
+      request: messages,
+      ...(cmd.system !== undefined ? { system: cmd.system } : {}),
+      responseText: r.text,
+      usage: r.usage,
+      cost: r.cost,
+      latencyMs: r.latencyMs,
+      ttftMs: r.ttftMs,
+    });
+  }
+
   const anyOk = results.some((r) => !r.error);
   return anyOk ? ExitCode.Success : ExitCode.Provider;
 }

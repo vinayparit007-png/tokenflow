@@ -70,9 +70,14 @@ export async function main(argv: string[]): Promise<number> {
   const pricing = loadPricing();
 
   if (command.kind === "log" || command.kind === "cost") {
-    // Wired to the history store in Phase 5.
     const { dispatchHistory } = await import("./history.js");
-    return dispatchHistory(command, { pricing, config, terminal });
+    const { HistoryStore } = await import("../history/store.js");
+    const store = new HistoryStore();
+    try {
+      return dispatchHistory(command, { terminal, store });
+    } finally {
+      store.close();
+    }
   }
 
   // chat
@@ -81,6 +86,17 @@ export async function main(argv: string[]): Promise<number> {
   process.on("SIGINT", onSigint);
 
   const stdinText = await readStdin(process.stdin);
+
+  // Open the history store. Recording must never break a chat, so a store that
+  // fails to open (e.g. read-only home) just disables history with a dim note.
+  const { HistoryStore } = await import("../history/store.js");
+  let store: InstanceType<typeof HistoryStore> | null = null;
+  try {
+    store = new HistoryStore();
+  } catch (error) {
+    terminal.err(terminal.c.dim(`(history disabled: ${(error as Error).message})\n`));
+  }
+
   const deps: CliDeps = {
     providers,
     pricing,
@@ -90,6 +106,30 @@ export async function main(argv: string[]): Promise<number> {
     signal: controller.signal,
     stdinText,
   };
+
+  // Resolve --continue and set up per-turn recording.
+  if (store) {
+    let sessionId: number | null = null;
+    if (command.models.length <= 1 && command.continueSession) {
+      sessionId = store.lastSessionId();
+      if (sessionId !== null) deps.history = store.sessionMessages(sessionId);
+    }
+    const ensureSession = (): number => (sessionId ??= store!.startSession());
+    deps.onTurn = (turn) => {
+      const prompt = [...turn.request].reverse().find((m) => m.role === "user")?.content ?? "";
+      store!.recordTurn(ensureSession(), {
+        provider: turn.provider,
+        model: turn.model,
+        prompt,
+        response: turn.responseText,
+        ...(turn.system !== undefined ? { system: turn.system } : {}),
+        usage: turn.usage,
+        cost: turn.cost,
+        latencyMs: turn.latencyMs,
+        ttftMs: turn.ttftMs,
+      });
+    };
+  }
 
   try {
     const hasPrompt = Boolean(command.prompt) || stdinText.trim() !== "";
@@ -101,6 +141,7 @@ export async function main(argv: string[]): Promise<number> {
     return ExitCode.Usage;
   } finally {
     process.off("SIGINT", onSigint);
+    store?.close();
   }
 }
 
