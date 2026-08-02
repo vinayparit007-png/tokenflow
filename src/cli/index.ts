@@ -8,6 +8,7 @@ import { parseArgs } from "./args.js";
 import { loadConfig } from "./config.js";
 import { terminalFromProcess, type Terminal } from "./tty.js";
 import { runChat, type CliDeps } from "./run.js";
+import { runFanout } from "./fanout.js";
 import { runRepl } from "./repl.js";
 import { HELP_TEXT } from "./help.js";
 import { ExitCode } from "./exit.js";
@@ -92,7 +93,9 @@ export async function main(argv: string[]): Promise<number> {
 
   try {
     const hasPrompt = Boolean(command.prompt) || stdinText.trim() !== "";
-    if (hasPrompt) return await runChat(command, deps);
+    if (hasPrompt) {
+      return command.models.length > 1 ? await runFanout(command, deps) : await runChat(command, deps);
+    }
     if (process.stdin.isTTY) return await runRepl(command, deps);
     terminal.err("No prompt given and stdin is empty. Run `tokenflow --help`.\n");
     return ExitCode.Usage;

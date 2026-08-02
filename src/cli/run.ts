@@ -22,6 +22,8 @@ export interface CliDeps {
   env: NodeJS.ProcessEnv;
   fetch?: typeof fetch;
   signal?: AbortSignal;
+  /** Retry budget for provider calls; defaults to the provider default (3). */
+  maxRetries?: number;
   drift?: DriftLogger;
   /** Content piped in via stdin, already read. */
   stdinText?: string;
@@ -101,6 +103,7 @@ export async function runChat(cmd: ChatCommand, deps: CliDeps): Promise<number> 
   const streamOptions: StreamOptions = {
     ...(deps.signal ? { signal: deps.signal } : {}),
     ...(deps.fetch ? { fetch: deps.fetch } : {}),
+    ...(deps.maxRetries !== undefined ? { maxRetries: deps.maxRetries } : {}),
     apiKey,
     ...(resolved.baseUrl ? { baseUrl: resolved.baseUrl } : {}),
     ...(recorder ? { onRawEvent: recorder.capture } : {}),
