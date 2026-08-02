@@ -1,6 +1,4 @@
 import type { Usage } from "./usage.js";
-import { emptyUsage } from "./usage.js";
-import { mergeUsage } from "./adapters/merge.js";
 import type { PricingTable, ModelRates } from "./pricing/loader.js";
 import { costOf, cacheSavingsOf } from "./cost.js";
 
@@ -58,9 +56,9 @@ export class SessionCost {
   }
 
   /**
-   * Aggregate usage and cost per model. Usage is summed with the same
-   * order-independent max-merge... no — across *distinct* turns token counts add,
-   * so usage is summed field-wise here (each turn is a separate request).
+   * Aggregate usage and cost per model. Across *distinct* turns token counts add
+   * (each turn is a separate request), so usage is summed field-wise here — this
+   * is unrelated to the max-merge used *within* a single turn's event stream.
    */
   byModel(): ModelAggregate[] {
     const groups = new Map<string, ModelAggregate>();
@@ -131,10 +129,6 @@ export class SessionCost {
 
 /** Field-wise sum of two usage records (distinct requests add). */
 function addUsage(a: Usage, b: Usage): Usage {
-  return mergeUsageAdd(a, b);
-}
-
-function mergeUsageAdd(a: Usage, b: Usage): Usage {
   return {
     input: a.input + b.input,
     output: a.output + b.output,
@@ -144,7 +138,3 @@ function mergeUsageAdd(a: Usage, b: Usage): Usage {
     complete: a.complete && b.complete,
   };
 }
-
-// Keep the import used even if a future refactor drops addUsage's helper form.
-void emptyUsage;
-void mergeUsage;
