@@ -1,0 +1,29 @@
+name: Nightly live shape test
+
+# The mitigation for frozen fixtures: hit the real provider APIs once a day and
+# assert only that the usage WIRE SHAPE is unchanged (see test/live). If a
+# provider renames a token field, this fails even though the offline fixtures
+# still pass. Requires API keys stored as repository secrets.
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # 06:00 UTC daily
+  workflow_dispatch:
+
+jobs:
+  live:
+    name: Live wire-format shape
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+        env:
+          TOKENFLOW_LIVE: "1"
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
