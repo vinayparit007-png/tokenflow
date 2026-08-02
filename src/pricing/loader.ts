@@ -24,6 +24,8 @@ export interface PricingTable {
    * null must propagate to the total (decision 3), never silently become 0.
    */
   rates(provider: string, model: string): ModelRates | null;
+  /** Every known provider/model pair, for resolution and error messages. */
+  list(): Array<{ provider: string; model: string }>;
 }
 
 const RATE_FIELDS = ["input", "output", "cacheWrite", "cacheRead"] as const;
@@ -92,6 +94,13 @@ export function parsePricing(raw: unknown): PricingTable {
     sources,
     rates(provider, model) {
       return table.get(provider)?.get(model) ?? null;
+    },
+    list() {
+      const out: Array<{ provider: string; model: string }> = [];
+      for (const [provider, models] of table) {
+        for (const model of models.keys()) out.push({ provider, model });
+      }
+      return out;
     },
   };
 }
