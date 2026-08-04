@@ -93,6 +93,53 @@ Pricing lives in a versioned [`pricing.json`](src/pricing/pricing.json) with a
 `updated` date and a `source` URL per provider, so you can patch a rate change
 without waiting for a release. Rates are integer **nanodollars per token**.
 
+### Other AI labs
+
+TokenFlow isn't limited to the three built-in providers. Most labs that have
+shipped since — DeepSeek, Mistral, Groq, Together, Fireworks, Perplexity,
+xAI/Grok, OpenRouter, Azure OpenAI, and local servers (Ollama, LM Studio,
+vLLM) — speak the same OpenAI-compatible `/chat/completions` streaming format.
+Add one under `customProviders`: a name you choose, a base URL, and (optionally)
+which env var holds the key:
+
+```json
+{
+  "customProviders": {
+    "deepseek": {
+      "baseUrl": "https://api.deepseek.com",
+      "keyEnv": "DEEPSEEK_API_KEY",
+      "models": {
+        "deepseek-chat": { "input": 270, "output": 1100, "cacheWrite": 0, "cacheRead": 70 }
+      }
+    },
+    "local-llama": {
+      "baseUrl": "http://localhost:11434",
+      "keyEnv": "OLLAMA_API_KEY"
+    }
+  }
+}
+```
+
+Then pick any of its models with `label:model` addressing:
+
+```bash
+tokenflow -m deepseek:deepseek-chat "explain CRDTs in one line"
+tokenflow -m claude,gpt-4o,deepseek:deepseek-chat "compare these"   # mix built-in and custom in one fan-out
+```
+
+If a bare model name (no `label:`) is unambiguous — only one configured
+provider declares it — you can drop the prefix: `-m deepseek-chat` works too.
+`keyEnv` defaults to `<LABEL>_API_KEY` if you omit it (`deepseek` →
+`DEEPSEEK_API_KEY`). The `models` rates are optional — an unrated model still
+runs, its cost just shows `?` (decision 3), never a wrong `$0.00`.
+
+This works because `createOpenAICompatibleProvider` (in
+[`src/providers/custom.ts`](src/providers/custom.ts)) reuses the exact same
+request builder, SSE parser, and usage adapter as the built-in OpenAI client —
+only the name, URL, and key differ. A lab with a genuinely different wire
+format (not OpenAI-shaped) needs a real adapter, the way Anthropic and Gemini
+have one — a small, contained addition, not a rewrite, but still code.
+
 ## Design decisions
 
 These are the load-bearing choices. They exist because getting cost tracking

@@ -1,25 +1,21 @@
-import type { ProviderName } from "../adapters/index.js";
 import { ProviderError, type StreamOptions } from "./types.js";
 import { withRetry } from "./retry.js";
 
 /**
  * Resolve an API key, preferring an explicit override, then the provider's env
- * var. Throws an actionable error naming both the env var and the config path —
- * never a bare "undefined" — because a missing key is the single most common
- * first-run failure.
+ * var. Throws an actionable error naming the env var — never a bare "undefined"
+ * — because a missing key is the single most common first-run failure.
+ *
+ * This is a defensive fallback: in the normal CLI flow, `run.ts`/`fanout.ts`
+ * already checked the key and built a message pointing at the exact config path
+ * (`providers.X.keyEnv` for a built-in, `customProviders.X.keyEnv` for a
+ * user-added lab) before ever calling `provider.stream(...)`. This message stays
+ * generic rather than guessing which of those two paths applies.
  */
-export function resolveApiKey(
-  provider: ProviderName,
-  keyEnv: string,
-  options: StreamOptions,
-): string {
+export function resolveApiKey(provider: string, keyEnv: string, options: StreamOptions): string {
   const key = options.apiKey ?? process.env[keyEnv];
   if (!key) {
-    throw new ProviderError(
-      provider,
-      `${keyEnv} not set — add it to your shell (e.g. \`export ${keyEnv}=...\`) ` +
-        `or set \`providers.${provider}.keyEnv\` in ~/.tokenflow/config.json.`,
-    );
+    throw new ProviderError(provider, `${keyEnv} not set — add it to your shell (e.g. \`export ${keyEnv}=...\`).`);
   }
   return key;
 }
@@ -39,7 +35,7 @@ function isRetryable(error: unknown): boolean {
  * `ProviderError`s: 429/5xx retryable, everything else fatal with the body text.
  */
 export async function postStream(
-  provider: ProviderName,
+  provider: string,
   url: string,
   init: RequestInit,
   options: StreamOptions,
@@ -76,7 +72,7 @@ export async function postStream(
 }
 
 /** Turn a non-retryable HTTP status into an actionable one-liner. */
-function describeHttpError(provider: ProviderName, status: number, body: string): string {
+function describeHttpError(provider: string, status: number, body: string): string {
   const snippet = body.slice(0, 300).trim();
   if (status === 401 || status === 403) {
     return `${provider} rejected the API key (${status}). Check the key is valid and has access to the model.`;

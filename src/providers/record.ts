@@ -1,10 +1,11 @@
 import { writeFileSync } from "node:fs";
-import type { ProviderName } from "../adapters/index.js";
 
 /** A recorded fixture: raw pre-adaptation events plus the metadata needed to
- * know what they are and when they were captured. */
+ * know what they are and when they were captured. `provider` is a display
+ * label — a built-in name or a custom lab's name — not tied to which of the
+ * three wire adapters actually parsed the events. */
 export interface RecordedFixture {
-  provider: ProviderName;
+  provider: string;
   model: string;
   /** ISO timestamp of capture, so a stale fixture is obvious at a glance. */
   capturedAt: string;
@@ -21,7 +22,7 @@ export class FixtureRecorder {
   private readonly events: unknown[] = [];
 
   constructor(
-    private readonly provider: ProviderName,
+    private readonly provider: string,
     private readonly model: string,
   ) {}
 

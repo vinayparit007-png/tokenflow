@@ -9,6 +9,7 @@ export { ProviderError } from "./types.js";
 export { anthropicProvider, buildAnthropicRequest } from "./anthropic.js";
 export { openaiProvider, buildOpenAIRequest } from "./openai.js";
 export { geminiProvider, buildGeminiRequest } from "./gemini.js";
+export { createOpenAICompatibleProvider } from "./custom.js";
 export { withRetry, abortableSleep, type RetryOptions } from "./retry.js";
 export { parseSSE } from "./sse.js";
 export { FixtureRecorder, type RecordedFixture } from "./record.js";

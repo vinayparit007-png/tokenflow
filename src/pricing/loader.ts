@@ -49,16 +49,20 @@ function fail(message: string): never {
  *
  * `context` is a dotted path prefix (e.g. `providers.openai.models.gpt-4o` or
  * `customProviders.deepseek.models.deepseek-chat`) used only to name the
- * offending field in the thrown error.
+ * offending field in the thrown error. Throws a BARE message (no "Invalid ...
+ * file:" prefix) deliberately — callers wrap it with whatever framing fits
+ * their own file (see `parsePricing` below vs. `cli/config.ts`'s use of this).
  */
 export function parseModelRates(raw: unknown, context: string): ModelRates {
-  if (typeof raw !== "object" || raw === null) fail(`${context} must be an object.`);
+  if (typeof raw !== "object" || raw === null) {
+    throw new Error(`${context} must be an object.`);
+  }
   const r = raw as Record<string, unknown>;
   const rates = {} as ModelRates;
   for (const field of RATE_FIELDS) {
     const value = r[field];
     if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
-      fail(
+      throw new Error(
         `${context}.${field} must be a non-negative integer (nanodollars per token), ` +
           `got ${JSON.stringify(value)}.`,
       );
@@ -97,7 +101,11 @@ export function parsePricing(raw: unknown): PricingTable {
     const models = new Map<string, ModelRates>();
 
     for (const [model, rawRates] of Object.entries(block.models)) {
-      models.set(model, parseModelRates(rawRates, `providers.${provider}.models.${model}`));
+      try {
+        models.set(model, parseModelRates(rawRates, `providers.${provider}.models.${model}`));
+      } catch (cause) {
+        fail((cause as Error).message);
+      }
     }
     table.set(provider, models);
   }

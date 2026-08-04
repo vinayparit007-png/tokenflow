@@ -3,7 +3,6 @@ import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
-import type { ProviderName } from "../adapters/index.js";
 import type { Usage } from "../usage.js";
 import type { Message } from "../providers/index.js";
 
@@ -34,9 +33,10 @@ function suppressSqliteWarning(): void {
 suppressSqliteWarning();
 const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite") as typeof import("node:sqlite");
 
-/** A turn as stored/returned by the history layer. */
+/** A turn as stored/returned by the history layer. `provider` is a display
+ * label — a built-in name or a custom lab's name from `config.customProviders`. */
 export interface StoredTurn {
-  provider: ProviderName;
+  provider: string;
   model: string;
   prompt: string;
   response: string;

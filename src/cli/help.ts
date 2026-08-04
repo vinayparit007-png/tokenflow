@@ -10,7 +10,7 @@ USAGE
   tokenflow cost [--since 7d]        spend report
 
 OPTIONS
-  -m, --model <name[,name...]>  model or alias (fast, cheap, smart); comma = fan-out
+  -m, --model <name[,name...]>  model, alias, or "label:model"; comma = fan-out
   -s, --system <text>          system prompt
       --max-tokens <n>         cap output tokens
       --no-stream              print the full response at once
@@ -22,6 +22,12 @@ OPTIONS
   -v, --version                show version
 
 Costs print to stdout in a TTY, to stderr when piped, so \`tokenflow "..." | jq\`
-sees only the model's output. Set provider keys via env vars (ANTHROPIC_API_KEY,
-OPENAI_API_KEY, GEMINI_API_KEY) or reference custom names in ~/.tokenflow/config.json.
+sees only the model's output. Built-in models: claude-*, gpt-*, gemini-* (or the
+fast/cheap/smart aliases), via ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY.
+
+OTHER AI LABS
+Add any OpenAI-compatible lab (DeepSeek, Mistral, Groq, OpenRouter, a local
+Ollama server, ...) under "customProviders" in ~/.tokenflow/config.json — a
+name, a baseUrl, and a keyEnv. Then address its models as "label:model", e.g.
+\`tokenflow -m deepseek:deepseek-chat "..."\`. See the README for a full example.
 `;

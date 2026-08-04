@@ -1,5 +1,4 @@
 import type { Usage } from "../usage.js";
-import type { ProviderName } from "../adapters/index.js";
 
 /** One conversation message. Kept deliberately minimal but shaped so a future
  * tool-use turn (content blocks) would extend `content` without a rewrite. */
@@ -45,9 +44,18 @@ export interface StreamOptions {
   onRawEvent?: (event: unknown) => void;
 }
 
-/** A provider is anything that can turn a request into a normalised event stream. */
+/**
+ * A provider is anything that can turn a request into a normalised event stream.
+ *
+ * `name` is a DISPLAY label, not necessarily one of the three built-in wire
+ * formats (`adapters.ProviderName`). A user-added custom lab (DeepSeek, Groq,
+ * Ollama, ...) gets its own `name` here — e.g. `"deepseek"` — while internally
+ * reusing the OpenAI adapter, because it speaks the OpenAI-compatible wire
+ * format. Which adapter a client uses and what it's called to the user are
+ * deliberately decoupled: see `providers/custom.ts`.
+ */
 export interface Provider {
-  readonly name: ProviderName;
+  readonly name: string;
   readonly keyEnv: string;
   stream(request: ChatRequest, options?: StreamOptions): AsyncGenerator<StreamEvent>;
 }
@@ -55,15 +63,15 @@ export interface Provider {
 /**
  * An error from a provider, carrying enough structure for the retry layer to
  * decide whether to retry and for the CLI to print something actionable rather
- * than a stack trace.
+ * than a stack trace. `provider` is a display label (see `Provider.name`).
  */
 export class ProviderError extends Error {
-  readonly provider: ProviderName;
+  readonly provider: string;
   readonly status?: number;
   readonly retryable: boolean;
 
   constructor(
-    provider: ProviderName,
+    provider: string,
     message: string,
     opts: { status?: number; retryable?: boolean; cause?: unknown } = {},
   ) {

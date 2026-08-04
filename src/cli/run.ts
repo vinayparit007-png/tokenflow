@@ -36,9 +36,10 @@ export interface CliDeps {
   onTurn?: (turn: CompletedTurn) => void;
 }
 
-/** The outcome of one completed turn. */
+/** The outcome of one completed turn. `provider` is a display/history label —
+ * see the note on `Provider.name` in providers/types.ts. */
 export interface CompletedTurn {
-  provider: ProviderName;
+  provider: string;
   model: string;
   request: Message[];
   system?: string;
@@ -74,7 +75,7 @@ export async function runChat(cmd: ChatCommand, deps: CliDeps): Promise<number> 
   const modelName = cmd.models[0] ?? deps.config.defaultModel ?? "claude-opus-4-8";
   let resolved;
   try {
-    resolved = resolveModel(modelName, deps.config, deps.pricing);
+    resolved = resolveModel(modelName, deps.config, deps.pricing, deps.providers);
   } catch (error) {
     terminal.err(`${(error as Error).message}\n`);
     return ExitCode.Usage;
@@ -84,12 +85,12 @@ export async function runChat(cmd: ChatCommand, deps: CliDeps): Promise<number> 
   if (!apiKey) {
     terminal.err(
       `${resolved.keyEnv} not set — add it to your shell (e.g. \`export ${resolved.keyEnv}=...\`) ` +
-        `or set \`providers.${resolved.provider}.keyEnv\` in ~/.tokenflow/config.json.\n`,
+        `or set \`${resolved.configHint}\` in ~/.tokenflow/config.json.\n`,
     );
     return ExitCode.Provider;
   }
 
-  const provider = deps.providers[resolved.provider];
+  const provider = resolved.provider;
   const messages: Message[] = [...(deps.history ?? []), { role: "user", content }];
   const request: ChatRequest = {
     model: resolved.model,
@@ -98,13 +99,12 @@ export async function runChat(cmd: ChatCommand, deps: CliDeps): Promise<number> 
     ...(cmd.maxTokens !== undefined ? { maxTokens: cmd.maxTokens } : {}),
   };
 
-  const rates = deps.pricing.rates(resolved.provider, resolved.model);
-  const recorder = cmd.record ? new FixtureRecorder(resolved.provider, resolved.model) : null;
+  const recorder = cmd.record ? new FixtureRecorder(resolved.providerName, resolved.model) : null;
   const renderer = new MarkdownStream(terminal);
   // Tracks characters/usage as they stream so the final cost is exact and the
   // drift log gets a real estimate to calibrate against — it draws nothing to
   // the screen (see the note in costline.ts on why the old live redraw is gone).
-  const costEstimator = new CostEstimator(rates);
+  const costEstimator = new CostEstimator(resolved.rates);
 
   const streamOptions: StreamOptions = {
     ...(deps.signal ? { signal: deps.signal } : {}),
@@ -159,7 +159,7 @@ export async function runChat(cmd: ChatCommand, deps: CliDeps): Promise<number> 
   const latencyMs = Date.now() - start;
 
   if (cmd.json) {
-    emitJson(terminal, resolved.provider, resolved.model, responseText, usage, cost, latencyMs, ttft);
+    emitJson(terminal, resolved.providerName, resolved.model, responseText, usage, cost, latencyMs, ttft);
   } else {
     if (!cmd.stream) terminal.out(responseText.endsWith("\n") ? responseText : `${responseText}\n`);
     terminal.cost(`\n${formatCostLine(terminal, resolved.model, usage, cost, deps.theme)}\n`);
@@ -174,7 +174,7 @@ export async function runChat(cmd: ChatCommand, deps: CliDeps): Promise<number> 
   );
 
   deps.onTurn?.({
-    provider: resolved.provider,
+    provider: resolved.providerName,
     model: resolved.model,
     request: messages,
     ...(cmd.system !== undefined ? { system: cmd.system } : {}),
@@ -221,7 +221,7 @@ function warnIfUnpriced(terminal: Terminal, cost: bigint | null, model: string):
 
 function emitJson(
   terminal: Terminal,
-  provider: ProviderName,
+  provider: string,
   model: string,
   text: string,
   usage: Usage,

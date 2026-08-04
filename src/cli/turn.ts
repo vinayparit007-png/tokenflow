@@ -1,13 +1,13 @@
-import type { ProviderName } from "../adapters/index.js";
 import { emptyUsage, type Usage } from "../usage.js";
 import type { ModelRates } from "../pricing/loader.js";
 import { costOf } from "../cost.js";
 import type { Provider, ChatRequest, StreamOptions } from "../providers/index.js";
 import { ProviderError, isAbortError } from "../providers/index.js";
 
-/** The fully-collected outcome of one model's turn (no live rendering). */
+/** The fully-collected outcome of one model's turn (no live rendering).
+ * `provider` is a display/history label — see the note on `Provider.name`. */
 export interface TurnResult {
-  provider: ProviderName;
+  provider: string;
   model: string;
   text: string;
   usage: Usage;

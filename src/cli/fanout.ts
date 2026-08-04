@@ -35,13 +35,11 @@ export async function runFanout(cmd: ChatCommand, deps: CliDeps): Promise<number
   // result rather than throwing, so the other models still run.
   const tasks = cmd.models.map(async (name): Promise<TurnResult> => {
     try {
-      const resolved = resolveModel(name, deps.config, deps.pricing);
+      const resolved = resolveModel(name, deps.config, deps.pricing, deps.providers);
       const apiKey = deps.env[resolved.keyEnv];
       if (!apiKey) {
-        return failed(name, name, `${resolved.keyEnv} not set`);
+        return failed(resolved.model, `${resolved.keyEnv} not set`, resolved.providerName);
       }
-      const provider = deps.providers[resolved.provider];
-      const rates = deps.pricing.rates(resolved.provider, resolved.model);
       const request: ChatRequest = {
         model: resolved.model,
         messages,
@@ -55,10 +53,12 @@ export async function runFanout(cmd: ChatCommand, deps: CliDeps): Promise<number
         apiKey,
         ...(resolved.baseUrl ? { baseUrl: resolved.baseUrl } : {}),
       };
-      return await collectTurn(provider, resolved.model, rates, request, options);
+      return await collectTurn(resolved.provider, resolved.model, resolved.rates, request, options);
     } catch (error) {
       if (isAbortError(error)) throw error;
-      return failed(name, name, (error as Error).message);
+      // Resolution itself failed (unknown model, bad config, ...): the
+      // provider is genuinely unknown at this point, not worth guessing.
+      return failed(name, (error as Error).message);
     }
   });
 
@@ -111,11 +111,13 @@ export async function runFanout(cmd: ChatCommand, deps: CliDeps): Promise<number
   return anyOk ? ExitCode.Success : ExitCode.Provider;
 }
 
-/** A synthetic failed result for a model that never got to stream. */
-function failed(model: string, label: string, message: string): TurnResult {
+/** A synthetic failed result for a model that never got to stream. `provider`
+ * defaults to "unknown" for the case where resolution itself failed and there
+ * is no real provider label to report (rather than guessing one). */
+function failed(model: string, message: string, provider = "unknown"): TurnResult {
   return {
-    provider: "anthropic",
-    model: label || model,
+    provider,
+    model,
     text: "",
     usage: emptyUsage(),
     cost: null,

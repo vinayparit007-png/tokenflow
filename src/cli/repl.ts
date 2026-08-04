@@ -35,7 +35,7 @@ export async function runRepl(
 
   let resolved;
   try {
-    resolved = resolveModel(modelName, deps.config, deps.pricing);
+    resolved = resolveModel(modelName, deps.config, deps.pricing, deps.providers);
   } catch (error) {
     terminal.err(`${(error as Error).message}\n`);
     return ExitCode.Usage;

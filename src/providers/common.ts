@@ -1,13 +1,18 @@
 import { emptyUsage, type Usage } from "../usage.js";
-import type { ProviderAdapter, ProviderName } from "../adapters/index.js";
+import type { ProviderAdapter } from "../adapters/index.js";
 import { parseSSE } from "./sse.js";
 import { postStream, resolveApiKey } from "./http.js";
 import { ProviderError, type ChatRequest, type StreamEvent, type StreamOptions } from "./types.js";
 
 /** The provider-specific pieces {@link createStream} needs; everything else
- * (retry, SSE parsing, usage diffing, cancellation) is shared. */
+ * (retry, SSE parsing, usage diffing, cancellation) is shared.
+ *
+ * `provider` is a DISPLAY label (used only for error text and `Provider.name`),
+ * independent of `adapter`, which selects the actual wire-format reducer. A
+ * custom OpenAI-compatible lab sets `provider` to its own name (e.g.
+ * `"deepseek"`) while still pointing `adapter` at `adapters.openai`. */
 export interface StreamSpec {
-  provider: ProviderName;
+  provider: string;
   keyEnv: string;
   defaultBaseUrl: string;
   /** Build the HTTP request for this provider. */
