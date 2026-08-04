@@ -1,8 +1,6 @@
 import type { Usage } from "../usage.js";
 import type { ModelRates } from "../pricing/loader.js";
 import { costOf } from "../cost.js";
-import { formatNanoUSD } from "../format.js";
-import type { Terminal } from "./tty.js";
 
 /** Rough tokens-per-character used to estimate output cost before the provider
  * reports real counts. ~3.7 chars/token is a decent cross-model average. */
@@ -67,51 +65,16 @@ export class CostEstimator {
   }
 }
 
-/**
- * Renders the live cost line to the terminal and snaps it to truth on completion.
- *
- * In a TTY the estimate is drawn on stderr in place (`\r` + clear-line), so it
- * never pollutes the piped stdout stream; when the turn ends the estimate line is
- * cleared and the final, exact cost is written through the chokepoint (stdout in a
- * TTY, stderr when piped). When not a TTY there is no live line at all.
- */
-export class LiveCostLine {
-  private readonly estimator: CostEstimator;
-
-  constructor(
-    private readonly terminal: Terminal,
-    rates: ModelRates | null,
-    private readonly modelLabel: string,
-  ) {
-    this.estimator = new CostEstimator(rates);
-  }
-
-  onText(text: string): void {
-    this.estimator.addChars(text.length);
-    this.draw();
-  }
-
-  onUsage(usage: Usage): void {
-    this.estimator.setInputFrom(usage);
-    this.draw();
-  }
-
-  private draw(): void {
-    if (!this.terminal.isTTY) return;
-    const { nanodollars } = this.estimator.estimate();
-    const text = nanodollars === null ? "~?" : `~${formatNanoUSD(nanodollars)}`;
-    this.terminal.err(`\r\x1b[2K${this.terminal.c.dim(`${this.modelLabel} ${text}`)}`);
-  }
-
-  /** Clear the estimate line and print the final, exact cost. Returns it. */
-  finalize(usage: Usage): CostSnapshot {
-    if (this.terminal.isTTY) this.terminal.err("\r\x1b[2K");
-    const snapshot = this.estimator.actual(usage);
-    return snapshot;
-  }
-
-  /** Estimated output tokens at this moment, for drift logging. */
-  estimatedOutputTokens(): number {
-    return estimateOutputTokens(this.estimator.charsSeen());
-  }
-}
+// NOTE ON A REMOVED FEATURE: an earlier version of this module also included a
+// `LiveCostLine` class that redrew a running "~$0.00003" estimate onto the
+// terminal in place on every streamed chunk, using `\r` + clear-line on stderr.
+// That assumed it owned the last line of the screen — which broke the moment
+// the model's actual multi-line response ALSO streamed to stdout at the same
+// time: the two writes race, and the estimate text gets glued onto the front of
+// content lines instead of staying put. Rather than fight per-terminal ANSI
+// scroll-region tricks (this project deliberately has no TUI framework), the
+// live in-place redraw was removed. `CostEstimator` above still tracks
+// characters as they stream — that data still feeds the drift log used to
+// calibrate the chars-per-token estimate — it just no longer draws anything
+// mid-stream. The only cost line shown is the single exact one printed once the
+// turn completes (see `formatCostLine` in run.ts).

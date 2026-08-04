@@ -41,6 +41,34 @@ function fail(message: string): never {
 }
 
 /**
+ * Validate and convert one model's raw rate object (four non-negative integer
+ * nanodollar fields) into a `ModelRates`. Shared by `pricing.json` loading and
+ * by custom-provider rates declared in `~/.tokenflow/config.json`, so a bad rate
+ * is rejected with the same actionable, field-naming error in either place —
+ * never silently coerced into a wrong cost.
+ *
+ * `context` is a dotted path prefix (e.g. `providers.openai.models.gpt-4o` or
+ * `customProviders.deepseek.models.deepseek-chat`) used only to name the
+ * offending field in the thrown error.
+ */
+export function parseModelRates(raw: unknown, context: string): ModelRates {
+  if (typeof raw !== "object" || raw === null) fail(`${context} must be an object.`);
+  const r = raw as Record<string, unknown>;
+  const rates = {} as ModelRates;
+  for (const field of RATE_FIELDS) {
+    const value = r[field];
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+      fail(
+        `${context}.${field} must be a non-negative integer (nanodollars per token), ` +
+          `got ${JSON.stringify(value)}.`,
+      );
+    }
+    rates[field] = BigInt(value);
+  }
+  return rates;
+}
+
+/**
  * Parse and validate a pricing document. Throws an actionable error naming the
  * offending path if anything is malformed, because a wrong rate silently loaded
  * would corrupt every cost this tool reports.
@@ -69,22 +97,7 @@ export function parsePricing(raw: unknown): PricingTable {
     const models = new Map<string, ModelRates>();
 
     for (const [model, rawRates] of Object.entries(block.models)) {
-      if (typeof rawRates !== "object" || rawRates === null) {
-        fail(`providers.${provider}.models.${model} must be an object.`);
-      }
-      const r = rawRates as Record<string, unknown>;
-      const rates = {} as ModelRates;
-      for (const field of RATE_FIELDS) {
-        const value = r[field];
-        if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
-          fail(
-            `providers.${provider}.models.${model}.${field} must be a non-negative integer ` +
-              `(nanodollars per token), got ${JSON.stringify(value)}.`,
-          );
-        }
-        rates[field] = BigInt(value);
-      }
-      models.set(model, rates);
+      models.set(model, parseModelRates(rawRates, `providers.${provider}.models.${model}`));
     }
     table.set(provider, models);
   }

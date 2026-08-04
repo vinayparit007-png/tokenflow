@@ -8,7 +8,7 @@ import type { Terminal } from "./tty.js";
 import type { Config } from "./config.js";
 import { resolveModel } from "./config.js";
 import { MarkdownStream } from "./render.js";
-import { LiveCostLine } from "./costline.js";
+import { CostEstimator, estimateOutputTokens } from "./costline.js";
 import { DriftLogger } from "./drift.js";
 import { ExitCode } from "./exit.js";
 import { paint, type Theme } from "./theme.js";
@@ -101,7 +101,10 @@ export async function runChat(cmd: ChatCommand, deps: CliDeps): Promise<number> 
   const rates = deps.pricing.rates(resolved.provider, resolved.model);
   const recorder = cmd.record ? new FixtureRecorder(resolved.provider, resolved.model) : null;
   const renderer = new MarkdownStream(terminal);
-  const liveCost = new LiveCostLine(terminal, rates, resolved.model);
+  // Tracks characters/usage as they stream so the final cost is exact and the
+  // drift log gets a real estimate to calibrate against — it draws nothing to
+  // the screen (see the note in costline.ts on why the old live redraw is gone).
+  const costEstimator = new CostEstimator(rates);
 
   const streamOptions: StreamOptions = {
     ...(deps.signal ? { signal: deps.signal } : {}),
@@ -124,12 +127,12 @@ export async function runChat(cmd: ChatCommand, deps: CliDeps): Promise<number> 
         case "text":
           if (ttft === null) ttft = Date.now() - start;
           responseText += event.text;
-          liveCost.onText(event.text);
+          costEstimator.addChars(event.text.length);
           if (!cmd.json && cmd.stream) renderer.feed(event.text);
           break;
         case "usage":
           usage = event.usage;
-          liveCost.onUsage(event.usage);
+          costEstimator.setInputFrom(event.usage);
           break;
         case "error":
           failed = event.error;
@@ -140,7 +143,6 @@ export async function runChat(cmd: ChatCommand, deps: CliDeps): Promise<number> 
     }
   } catch (error) {
     if (isAbortError(error)) {
-      if (terminal.isTTY) terminal.err("\r\x1b[2K");
       terminal.err(terminal.c.dim("\n[cancelled]\n"));
       return ExitCode.Cancelled;
     }
@@ -148,13 +150,12 @@ export async function runChat(cmd: ChatCommand, deps: CliDeps): Promise<number> 
   }
 
   if (failed) {
-    if (terminal.isTTY) terminal.err("\r\x1b[2K");
     terminal.err(`\n${terminal.c.red(`Error (${failed.provider}): ${failed.message}`)}\n`);
     return ExitCode.Provider;
   }
 
   if (!cmd.json && cmd.stream) renderer.flush();
-  const cost = liveCost.finalize(usage).nanodollars;
+  const cost = costEstimator.actual(usage).nanodollars;
   const latencyMs = Date.now() - start;
 
   if (cmd.json) {
@@ -166,7 +167,11 @@ export async function runChat(cmd: ChatCommand, deps: CliDeps): Promise<number> 
   }
 
   if (recorder && cmd.record) recorder.save(cmd.record);
-  (deps.drift ?? new DriftLogger()).record(resolved.model, liveCost.estimatedOutputTokens(), usage.output);
+  (deps.drift ?? new DriftLogger()).record(
+    resolved.model,
+    estimateOutputTokens(costEstimator.charsSeen()),
+    usage.output,
+  );
 
   deps.onTurn?.({
     provider: resolved.provider,
