@@ -4,6 +4,11 @@
   "description": "A terminal LLM client with accurate, live cost tracking across providers.",
   "type": "module",
   "license": "MIT",
+  "author": "vinayparit007-png",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vinayparit007-png/tokenflow.git"
+  },
   "engines": {
     "node": ">=22.5"
   },

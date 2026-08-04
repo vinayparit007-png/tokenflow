@@ -3,7 +3,7 @@
 <!-- TODO: record and embed an asciinema GIF here (asciinema rec → agg to .gif).
      It belongs at the very top; a static demo is shown below until then. -->
 
-[![CI](https://github.com/OWNER/tokenflow/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/tokenflow/actions/workflows/ci.yml)
+[![CI](https://github.com/vinayparit007-png/tokenflow/actions/workflows/ci.yml/badge.svg)](https://github.com/vinayparit007-png/tokenflow/actions/workflows/ci.yml)
 
 **A terminal LLM client that tells you what you actually spent.** If you're paying
 per token across Anthropic, OpenAI, and Gemini, TokenFlow tracks the cost live and
