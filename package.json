@@ -11,7 +11,7 @@
     ".": "./dist/index.js"
   },
   "bin": {
-    "tokenflow": "./dist/cli/index.js"
+    "tokenflow": "dist/cli/index.js"
   },
   "files": [
     "dist",
