@@ -4,6 +4,7 @@ import { SessionCost } from "../session.js";
 import { formatCost } from "../format.js";
 import { resolveModel } from "./config.js";
 import type { Terminal } from "./tty.js";
+import { gradient } from "./theme.js";
 import { MarkdownStream } from "./render.js";
 import { collectTurn, type TurnResult } from "./turn.js";
 import { renderTable, type Column } from "./table.js";
@@ -74,7 +75,10 @@ export async function runFanout(cmd: ChatCommand, deps: CliDeps): Promise<number
 
   // Render each response in the order requested, followed by its footer.
   for (const result of results) {
-    terminal.out(`\n${terminal.c.bold(terminal.c.cyan(`■ ${result.model}`))}\n`);
+    const heading = deps.theme
+      ? gradient(`■ ${result.model}`, deps.theme, terminal, true)
+      : terminal.c.bold(terminal.c.cyan(`■ ${result.model}`));
+    terminal.out(`\n${heading}\n`);
     if (result.error) {
       terminal.out(terminal.c.red(`  ✗ ${result.error.message}\n`));
       continue;

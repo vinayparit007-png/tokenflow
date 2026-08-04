@@ -18,6 +18,7 @@ export interface ChatCommand {
   maxTokens?: number;
   continueSession: boolean;
   color?: boolean;
+  theme?: string;
 }
 
 export interface LogCommand {
@@ -45,7 +46,7 @@ export type ParsedCommand =
   | ParseError;
 
 /** Flags that take a value. */
-const VALUE_FLAGS = new Set(["--model", "-m", "--system", "-s", "--record", "--max-tokens", "--since", "--limit"]);
+const VALUE_FLAGS = new Set(["--model", "-m", "--system", "-s", "--record", "--max-tokens", "--since", "--limit", "--theme"]);
 
 /**
  * Parse argv (without `node` and script path). Returns a discriminated command;
@@ -89,6 +90,9 @@ export function parseArgs(argv: string[]): ParsedCommand {
           break;
         case "--record":
           chat.record = value;
+          break;
+        case "--theme":
+          chat.theme = value;
           break;
         case "--max-tokens": {
           const n = Number(value);

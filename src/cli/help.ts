@@ -16,6 +16,7 @@ OPTIONS
       --no-stream              print the full response at once
       --json                   emit a JSON object (text, usage, cost)
       --continue               resume the last session
+      --theme <name>           color theme: aurora, neon, sunset, matrix
       --color / --no-color     force color on/off
   -h, --help                   show this help
   -v, --version                show version

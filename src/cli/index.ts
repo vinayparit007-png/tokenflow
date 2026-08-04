@@ -10,6 +10,7 @@ import { terminalFromProcess, type Terminal } from "./tty.js";
 import { runChat, type CliDeps } from "./run.js";
 import { runFanout } from "./fanout.js";
 import { runRepl } from "./repl.js";
+import { themeFor } from "./theme.js";
 import { HELP_TEXT } from "./help.js";
 import { ExitCode } from "./exit.js";
 
@@ -105,6 +106,7 @@ export async function main(argv: string[]): Promise<number> {
     env: process.env,
     signal: controller.signal,
     stdinText,
+    theme: themeFor(command.theme ?? config.theme ?? process.env.TOKENFLOW_THEME),
   };
 
   // Resolve --continue and set up per-turn recording.

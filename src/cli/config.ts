@@ -20,6 +20,8 @@ export interface Config {
   /** Short names mapping to a model id, e.g. `{ fast: "claude-haiku-4-5" }`. */
   aliases?: Record<string, string>;
   maxTokens?: number;
+  /** Terminal theme name (aurora, neon, sunset, matrix). */
+  theme?: string;
 }
 
 /** Default env var per provider, used when config doesn't override. */

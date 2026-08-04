@@ -6,6 +6,7 @@ import { resolveModel } from "./config.js";
 import { formatCost } from "../format.js";
 import { runChat, type CliDeps } from "./run.js";
 import { ExitCode } from "./exit.js";
+import { paint, banner, themeFor } from "./theme.js";
 import type { ChatCommand } from "./args.js";
 
 /**
@@ -32,14 +33,17 @@ export async function runRepl(
     return ExitCode.Usage;
   }
 
+  const theme = deps.theme ?? themeFor(undefined);
+  const splash = banner(theme, terminal);
+  if (splash) terminal.err(`\n${splash}\n`);
   terminal.err(
-    terminal.c.dim(`TokenFlow REPL · ${resolved.model} · /help for commands, Ctrl-D to exit\n`),
+    terminal.c.dim(`  ${resolved.model} · /help for commands, Ctrl-D to exit\n\n`),
   );
 
   const rl = createInterface({ input: stdin, output: terminal.isTTY ? process.stdout : undefined, terminal: false });
   const ask = (): Promise<string | null> =>
     new Promise((resolve) => {
-      terminal.err(terminal.c.cyan("› "));
+      terminal.err(paint("❯ ", theme.accent, terminal, true));
       rl.once("line", (line) => resolve(line));
       rl.once("close", () => resolve(null));
     });
@@ -58,7 +62,7 @@ export async function runRepl(
         continue;
       }
       if (trimmed === "/cost") {
-        terminal.err(`${terminal.c.bold(`session total: ${formatCost(session.total())}`)}\n`);
+        terminal.err(`${paint(`session total: ${formatCost(session.total())}`, theme.accent, terminal, true)}\n`);
         continue;
       }
       if (trimmed === "/help") {
@@ -80,7 +84,7 @@ export async function runRepl(
         session.record(turn.provider, turn.model, turn.usage);
       },
     });
-    terminal.err(`${terminal.c.dim(`session total: ${formatCost(session.total())}`)}\n`);
+    terminal.err(`${paint(`  session total: ${formatCost(session.total())}`, theme.accent, terminal)}\n\n`);
   }
 
   rl.close();

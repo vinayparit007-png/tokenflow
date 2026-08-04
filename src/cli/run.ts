@@ -11,6 +11,7 @@ import { MarkdownStream } from "./render.js";
 import { LiveCostLine } from "./costline.js";
 import { DriftLogger } from "./drift.js";
 import { ExitCode } from "./exit.js";
+import { paint, type Theme } from "./theme.js";
 import type { ChatCommand } from "./args.js";
 
 /** Everything a chat run needs, injected so the whole flow is testable offline. */
@@ -24,6 +25,8 @@ export interface CliDeps {
   signal?: AbortSignal;
   /** Retry budget for provider calls; defaults to the provider default (3). */
   maxRetries?: number;
+  /** Terminal theme for accents; defaults to a plain look when omitted. */
+  theme?: Theme;
   drift?: DriftLogger;
   /** Content piped in via stdin, already read. */
   stdinText?: string;
@@ -158,7 +161,7 @@ export async function runChat(cmd: ChatCommand, deps: CliDeps): Promise<number> 
     emitJson(terminal, resolved.provider, resolved.model, responseText, usage, cost, latencyMs, ttft);
   } else {
     if (!cmd.stream) terminal.out(responseText.endsWith("\n") ? responseText : `${responseText}\n`);
-    terminal.cost(`\n${formatCostLine(terminal, resolved.model, usage, cost)}\n`);
+    terminal.cost(`\n${formatCostLine(terminal, resolved.model, usage, cost, deps.theme)}\n`);
     warnIfUnpriced(terminal, cost, resolved.model);
   }
 
@@ -180,21 +183,29 @@ export async function runChat(cmd: ChatCommand, deps: CliDeps): Promise<number> 
   return ExitCode.Success;
 }
 
-/** A one-line cost/usage footer: `model · N in / M out (+cache) · $x`. */
+/** A one-line cost/usage footer: `model · N in / M out (+cache) · $x`. The model
+ * name and the dollar figure pick up the theme accent when one is supplied. */
 export function formatCostLine(
   terminal: Terminal,
   model: string,
   usage: Usage,
   cost: bigint | null,
+  theme?: Theme,
 ): string {
   const { c } = terminal;
+  const modelLabel = theme ? paint(model, theme.accent, terminal, true) : c.bold(model);
+  const costLabel = theme ? paint(formatCost(cost), theme.accent, terminal, true) : c.bold(formatCost(cost));
   const cacheNote =
     usage.cacheRead > 0 || usage.cacheWrite > 0
       ? c.dim(` (cache ${usage.cacheRead}r/${usage.cacheWrite}w)`)
       : "";
-  return c.dim(
-    `${model} · ${usage.input} in / ${usage.output} out${usage.reasoning > 0 ? ` (${usage.reasoning} reasoning)` : ""}${cacheNote} · `,
-  ) + c.bold(formatCost(cost));
+  return (
+    modelLabel +
+    c.dim(
+      ` · ${usage.input} in / ${usage.output} out${usage.reasoning > 0 ? ` (${usage.reasoning} reasoning)` : ""}${cacheNote} · `,
+    ) +
+    costLabel
+  );
 }
 
 function warnIfUnpriced(terminal: Terminal, cost: bigint | null, model: string): void {
