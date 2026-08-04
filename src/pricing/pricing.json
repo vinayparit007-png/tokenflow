@@ -1,6 +1,6 @@
 {
-  "updated": "2026-08-02",
-  "note": "Rates are integer NANODOLLARS per token (1 dollar = 1e9 nanodollars). TODO: real rates to be supplied; all values are placeholder 0 for now.",
+  "updated": "2026-08-04",
+  "note": "Rates are integer NANODOLLARS per token (1 dollar = 1e9 nanodollars). OpenAI gpt-4o / gpt-4o-mini rates filled from OpenAI's public pricing (verify against the source URL). Anthropic and Gemini remain TODO placeholder 0.",
   "providers": {
     "anthropic": {
       "source": "https://www.anthropic.com/pricing",
@@ -13,8 +13,8 @@
     "openai": {
       "source": "https://openai.com/api/pricing/",
       "models": {
-        "gpt-4o": { "input": 0, "output": 0, "cacheWrite": 0, "cacheRead": 0 },
-        "gpt-4o-mini": { "input": 0, "output": 0, "cacheWrite": 0, "cacheRead": 0 }
+        "gpt-4o": { "input": 2500, "output": 10000, "cacheWrite": 0, "cacheRead": 1250 },
+        "gpt-4o-mini": { "input": 150, "output": 600, "cacheWrite": 0, "cacheRead": 75 }
       }
     },
     "gemini": {
