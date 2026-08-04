@@ -19,7 +19,8 @@ export interface Theme {
   accent: RGB;
 }
 
-/** Built-in themes. `aurora` (a Gemini-like blue→purple→pink) is the default. */
+/** Built-in themes. `neon` (arcade green→cyan) is the default; `aurora` is a
+ * calmer Gemini-like blue→purple→pink. */
 export const THEMES: Record<string, Theme> = {
   aurora: { name: "aurora", stops: [[80, 140, 255], [150, 110, 255], [255, 110, 200]], accent: [150, 130, 255] },
   neon: { name: "neon", stops: [[0, 255, 170], [0, 220, 255], [120, 120, 255]], accent: [0, 255, 190] },
@@ -27,7 +28,7 @@ export const THEMES: Record<string, Theme> = {
   matrix: { name: "matrix", stops: [[120, 255, 120], [0, 200, 70], [0, 120, 40]], accent: [0, 230, 90] },
 };
 
-export const DEFAULT_THEME = "aurora";
+export const DEFAULT_THEME = "neon";
 
 /** Resolve a theme by name, falling back to the default for unknown names. */
 export function themeFor(name: string | undefined): Theme {

@@ -41,11 +41,11 @@ describe("theme helpers respect the color gate (decision 6)", () => {
 
 describe("themeFor", () => {
   it("returns the named theme", () => {
-    expect(themeFor("neon").name).toBe("neon");
+    expect(themeFor("aurora").name).toBe("aurora");
   });
-  it("falls back to aurora for unknown or missing names", () => {
-    expect(themeFor("nope").name).toBe("aurora");
-    expect(themeFor(undefined).name).toBe("aurora");
+  it("falls back to the default (neon) for unknown or missing names", () => {
+    expect(themeFor("nope").name).toBe("neon");
+    expect(themeFor(undefined).name).toBe("neon");
   });
   it("exposes all theme names", () => {
     expect(themeNames()).toEqual(expect.arrayContaining(["aurora", "neon", "sunset", "matrix"]));
