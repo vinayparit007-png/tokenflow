@@ -1,7 +1,7 @@
 {
   "name": "@vinayparit005/tokenflow",
   "version": "0.1.0",
-  "description": "A terminal LLM client with accurate, live cost tracking across providers.",
+  "description": "Terminal CLI for chatting with multiple LLM providers with accurate, live cost tracking.",
   "type": "module",
   "license": "MIT",
   "author": "vinayparit007-png",
