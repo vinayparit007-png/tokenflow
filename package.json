@@ -1,5 +1,5 @@
 {
-  "name": "tokenflow",
+  "name": "@vinayparit005/tokenflow",
   "version": "0.1.0",
   "description": "A terminal LLM client with accurate, live cost tracking across providers.",
   "type": "module",

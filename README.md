@@ -32,13 +32,13 @@ total: $0.0043
 ## Install
 
 ```bash
-npx tokenflow "hello"
+npx @vinayparit005/tokenflow "hello"
 ```
 
-Or install it:
+Or install it (the command is still just `tokenflow` afterward):
 
 ```bash
-npm install -g tokenflow
+npm install -g @vinayparit005/tokenflow
 ```
 
 Requires **Node 22.5+** (for the built-in `node:sqlite`). Set at least one key:
