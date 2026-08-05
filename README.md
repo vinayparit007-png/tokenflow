@@ -1,21 +1,23 @@
 # TokenFlow
 
-<!-- TODO: record and embed an asciinema GIF here (asciinema rec → agg to .gif).
-     It belongs at the very top; a static demo is shown below until then. -->
-
 [![CI](https://github.com/vinayparit007-png/tokenflow/actions/workflows/ci.yml/badge.svg)](https://github.com/vinayparit007-png/tokenflow/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@vinayparit005/tokenflow.svg)](https://www.npmjs.com/package/@vinayparit005/tokenflow)
+[![node](https://img.shields.io/node/v/@vinayparit005/tokenflow.svg)](package.json)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**A terminal LLM client that tells you what you actually spent.** If you're paying
-per token across Anthropic, OpenAI, and Gemini, TokenFlow tracks the cost live and
-accurately, in one place.
+**Accurate, real-time cost tracking for LLM conversations — directly in your terminal.**
 
-```console
+TokenFlow is a multi-provider terminal client that reports the exact cost of every request and session across Anthropic, OpenAI, Google Gemini, and any OpenAI-compatible provider. No more guessing what your API usage costs.
+
+```
 $ git diff | tokenflow "write a commit message"
 feat(auth): rotate refresh tokens on every use
 
 Prevents replay of a leaked refresh token…
 claude-opus-4-8 · 412 in / 96 out · $0.00234 · 1.2s · ttft 380ms
+```
 
+```
 $ tokenflow -m claude,gpt,gemini "explain CRDTs in one line"
 ■ claude-opus-4-8   …
 ■ gpt-4o            …
@@ -29,59 +31,90 @@ gemini-2.5-pro    210    91   $0.0008     820ms  300ms
 total: $0.0043
 ```
 
-## Install
+## Table of Contents
+
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+- [Adding Custom Providers](#adding-custom-providers)
+- [Architecture & Design](#architecture--design)
+- [Development](#development)
+- [License](#license)
+
+## Installation
+
+Try it immediately with `npx`:
 
 ```bash
 npx @vinayparit005/tokenflow "hello"
 ```
 
-Or install it (the command is still just `tokenflow` afterward):
+For persistent use, install globally:
 
 ```bash
 npm install -g @vinayparit005/tokenflow
 ```
 
-Requires **Node 22.5+** (for the built-in `node:sqlite`). Set at least one key:
+**Requirements:** Node.js 22.5+ (uses the built-in `node:sqlite` module).
+
+Set at least one provider API key:
 
 ```bash
-export ANTHROPIC_API_KEY=…   # and/or OPENAI_API_KEY, GEMINI_API_KEY
+export ANTHROPIC_API_KEY=sk-ant-…
+export OPENAI_API_KEY=sk-…
+export GEMINI_API_KEY=…
 ```
 
-## Usage
+## Quick Start
 
 ```bash
-tokenflow "prompt"                     # one-shot
-tokenflow                              # interactive REPL
-git diff | tokenflow "summarise this"  # pipe stdin as context
-tokenflow -m claude,gpt,gemini "…"     # fan out to several models
-tokenflow --json "…" | jq .cost_usd    # machine-readable output
-tokenflow log                          # list past sessions
-tokenflow log search "commit message"  # full-text search history
-tokenflow cost --since 7d              # spend grouped by model and day
-tokenflow --continue "and then?"       # resume the last session
+tokenflow "prompt"                     # Single completion
+tokenflow                              # Interactive REPL
+git diff | tokenflow "summarise this"  # Pipe context via stdin
+tokenflow -m claude,gpt,gemini "…"     # Fan-out across multiple models
+tokenflow --json "…" | jq .cost_usd    # Machine-readable JSON output
+tokenflow log                          # Browse session history
+tokenflow log search "commit message"  # Full-text search across history
+tokenflow cost --since 7d              # Spending report by model and day
+tokenflow --continue "and then?"       # Resume a previous session
 ```
 
-| Flag | Meaning |
+### Options
+
+| Flag | Description |
 | --- | --- |
-| `-m, --model <a,b,…>` | model or alias (`fast`, `cheap`, `smart`); comma = fan-out |
-| `-s, --system <text>` | system prompt |
-| `--max-tokens <n>` | cap output tokens |
-| `--no-stream` | print the full response at once |
-| `--json` | emit a JSON object (text, usage, cost) |
-| `--continue` | resume the last session |
-| `--color` / `--no-color` | force color on/off |
+| `-m, --model <a,b,…>` | Model name, alias (`fast`, `cheap`, `smart`), or `label:model`. Comma-separated values fan out to multiple models in parallel. |
+| `-s, --system <text>` | System prompt prepended to each request. |
+| `--max-tokens <n>` | Maximum number of generated tokens. |
+| `--no-stream` | Wait for the complete response instead of streaming. |
+| `--json` | Output a single JSON object containing text, usage, and cost. |
+| `--continue` | Resume the most recent session with full context. |
+| `--theme <name>` | Terminal color theme: `neon` (default), `aurora`, `sunset`, `matrix`. |
+| `--color` / `--no-color` | Force color output on or off, overriding TTY detection. |
+| `-h, --help` | Display help. |
+| `-v, --version` | Display version. |
 
-Exit codes: `0` ok, `2` usage error, `3` provider/API error, `4` cancelled, `5` bad config.
+### Exit Codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Success |
+| `2` | Invalid usage / bad arguments |
+| `3` | Provider or API error |
+| `4` | Cancelled by user |
+| `5` | Invalid configuration |
 
 ## Configuration
 
-Optional `~/.tokenflow/config.json`. **API keys are never stored here** — only the
-name of the env var that holds each key:
+TokenFlow reads `~/.tokenflow/config.json` on startup. API keys are **never** stored in this file — only the name of the environment variable that holds each key:
 
 ```json
 {
   "defaultModel": "claude-opus-4-8",
-  "aliases": { "fast": "claude-haiku-4-5", "smart": "claude-opus-4-8" },
+  "aliases": {
+    "fast": "claude-haiku-4-5",
+    "smart": "claude-opus-4-8"
+  },
   "providers": {
     "anthropic": { "keyEnv": "ANTHROPIC_API_KEY" },
     "openai": { "keyEnv": "WORK_OPENAI_KEY", "baseUrl": "https://gateway.internal" }
@@ -89,18 +122,15 @@ name of the env var that holds each key:
 }
 ```
 
-Pricing lives in a versioned [`pricing.json`](src/pricing/pricing.json) with a
-`updated` date and a `source` URL per provider, so you can patch a rate change
-without waiting for a release. Rates are integer **nanodollars per token**.
+### Pricing
 
-### Other AI labs
+Model pricing is maintained in a versioned data file ([`pricing.json`](src/pricing/pricing.json)) with an `updated` timestamp and `source` URL per provider. Rates are stored as integer **nanodollars per token**, ensuring exact arithmetic with no floating-point drift. A pricing change can be patched directly without waiting for a new release.
 
-TokenFlow isn't limited to the three built-in providers. Most labs that have
-shipped since — DeepSeek, Mistral, Groq, Together, Fireworks, Perplexity,
-xAI/Grok, OpenRouter, Azure OpenAI, and local servers (Ollama, LM Studio,
-vLLM) — speak the same OpenAI-compatible `/chat/completions` streaming format.
-Add one under `customProviders`: a name you choose, a base URL, and (optionally)
-which env var holds the key:
+## Adding Custom Providers
+
+TokenFlow supports any OpenAI-compatible provider out of the box — DeepSeek, Mistral, Groq, Together, Fireworks, Perplexity, xAI/Grok, OpenRouter, Azure OpenAI, and local servers like Ollama, LM Studio, or vLLM.
+
+Add a provider under `customProviders` with a name, base URL, and (optionally) the environment variable for its API key:
 
 ```json
 {
@@ -120,89 +150,64 @@ which env var holds the key:
 }
 ```
 
-Then pick any of its models with `label:model` addressing:
+Address models with `label:model` syntax, and mix built-in and custom providers freely in a single fan-out:
 
 ```bash
 tokenflow -m deepseek:deepseek-chat "explain CRDTs in one line"
-tokenflow -m claude,gpt-4o,deepseek:deepseek-chat "compare these"   # mix built-in and custom in one fan-out
+tokenflow -m claude,gpt-4o,deepseek:deepseek-chat "compare these"
 ```
 
-If a bare model name (no `label:`) is unambiguous — only one configured
-provider declares it — you can drop the prefix: `-m deepseek-chat` works too.
-`keyEnv` defaults to `<LABEL>_API_KEY` if you omit it (`deepseek` →
-`DEEPSEEK_API_KEY`). The `models` rates are optional — an unrated model still
-runs, its cost just shows `?` (decision 3), never a wrong `$0.00`.
+When a bare model name is unambiguous — only one configured provider declares it — the `label:` prefix can be omitted. `keyEnv` defaults to `<LABEL>_API_KEY` when not specified (e.g., `deepseek` derives `DEEPSEEK_API_KEY`).
 
-This works because `createOpenAICompatibleProvider` (in
-[`src/providers/custom.ts`](src/providers/custom.ts)) reuses the exact same
-request builder, SSE parser, and usage adapter as the built-in OpenAI client —
-only the name, URL, and key differ. A lab with a genuinely different wire
-format (not OpenAI-shaped) needs a real adapter, the way Anthropic and Gemini
-have one — a small, contained addition, not a rewrite, but still code.
+Listing model rates under `models` is optional. An unrated model still works; its cost displays as `?` rather than a misleading `$0.00`.
 
-## Design decisions
+> **Note:** This works because [`createOpenAICompatibleProvider`](src/providers/custom.ts) reuses the same request builder, SSE parser, and usage adapter as the built-in OpenAI client. A provider with a genuinely different wire format (non-OpenAI-shaped) requires a dedicated adapter — a contained addition, not a rewrite.
 
-These are the load-bearing choices. They exist because getting cost tracking
-*right* across providers is harder than it looks.
+## Architecture & Design
 
-1. **Adapters emit absolute totals, never increments.** Each provider adapter is a
-   pure `(usage, event) => usage` reducer that assigns fields. Anthropic's
-   `message_delta` usage is a cumulative running total and cache counts appear in
-   more than one event, so `usage.output += …` double-counts (the bug that shipped
-   in LangChain's 2× cache tokens and Cline's context drift). Replaying a stream
-   with every event duplicated yields identical totals.
-   *Implementation note:* we merge by the **per-field max** of the absolute totals
-   rather than literal last-write. Both avoid `+=`, but max is also order-invariant
-   — needed because `message_start` reports `output_tokens: 1` while the later
-   delta reports the real total, so last-write-wins would be reorder-sensitive.
-2. **Money is integer nanodollars (`bigint`), formatted only at the edge.** Rates
-   are fractions of a cent per token; float accumulation drifts visibly over a long
-   session. All arithmetic is exact `bigint`; a decimal string is produced only in
-   the formatter.
-3. **Unknown pricing yields `null`, and null propagates.** A model missing from
-   the pricing table costs `null`, not `0`. Any unpriced turn makes the session
-   total `?` with a note naming the model. Never a confidently-wrong `$0.00`.
-4. **Pricing is a versioned data file, not source.** Patch a rate in
-   `pricing.json` and go; no release required.
-5. **Cache tokens are normalised to be disjoint from input.** OpenAI and Gemini
-   report cached tokens *inside* the prompt count; Anthropic reports them *beside*
-   it. After adaptation `input` and `cacheRead` never overlap — asserted in the
-   contract suite — so the same token is never billed at two rates.
-6. **One TTY chokepoint governs all formatting.** `process.stdout.isTTY === false`
-   means piped: raw text, no ANSI, no spinner, no markdown, and the cost line goes
-   to **stderr** so `tokenflow "…" | jq` sees only the model's output. This lives
-   in one place ([`src/cli/tty.ts`](src/cli/tty.ts)), not scattered conditionals.
+Accurate multi-provider cost tracking is harder than it looks. These design decisions make it correct.
 
-### What the tests prove — and what they don't
+### 1. Absolute totals, never increments
 
-The offline suite (120 tests) pins exact totals against recorded event streams,
-proves idempotence and order-invariance with property tests, and enforces the
-`Usage` contract identically across all three providers.
+Each provider adapter is a pure `(usage, event) => usage` reducer that **assigns** fields rather than accumulating them. Anthropic's `message_delta` usage is a cumulative running total, and cache counts appear in multiple events — `usage.output += …` would double-count tokens. This is the class of bug behind LangChain's 2x cache-token overcount and similar drift issues in other tools.
 
-**Frozen fixtures cannot catch a provider changing its wire format.** If OpenAI
-renames `prompt_tokens` tomorrow, every fixture keeps passing while real calls
-break. The mitigation is an optional **shape-only live test**
-([`test/live/shape.live.test.ts`](test/live/shape.live.test.ts)) that hits the
-real APIs and asserts the usage *shape* (not counts) still holds. It is gated
-behind `TOKENFLOW_LIVE=1` plus keys, self-skips in the normal suite, and
-[runs nightly in CI](.github/workflows/nightly-live.yml) with secrets.
+Fields are merged via the **per-field maximum** of absolute totals, making the merge both idempotent and order-invariant. Replaying a stream with every event duplicated yields identical results.
 
-### Substitutions from the original brief
+### 2. Integer nanodollar arithmetic
 
-- **`node:sqlite` instead of `better-sqlite3`.** Node 22.5+ ships a synchronous
-  SQLite with FTS5 built in — the same API the brief wanted, with no native
-  compilation to fail on new Node versions. It's isolated in
-  [`src/history/store.ts`](src/history/store.ts) if you want to swap it back.
+All monetary values use `bigint` nanodollars (10⁻⁹ USD). Provider rates are fractions of a cent per token; floating-point accumulation drifts visibly over long sessions. Decimal strings are produced only at the display boundary by the formatter.
+
+### 3. Null propagation for unknown pricing
+
+A model missing from the pricing table costs `null`, not `0`. Any turn with unknown pricing causes the session total to display as `?` with a note naming the model — never a confidently wrong `$0.00`.
+
+### 4. Disjoint cache token normalization
+
+OpenAI and Gemini report cached tokens *inside* the prompt count; Anthropic reports them *alongside* it. After normalization, `input` and `cacheRead` never overlap — enforced by the contract test suite — so no token is billed at two rates.
+
+### 5. Single TTY chokepoint
+
+All output formatting decisions flow through a single point ([`src/cli/tty.ts`](src/cli/tty.ts)). When stdout is piped (`!process.stdout.isTTY`): plain text only, no ANSI codes, no spinner, no markdown rendering, and cost is written to **stderr** so that `tokenflow "…" | jq` receives only the model's output on stdout.
+
+### Testing Strategy
+
+The offline suite (120+ tests) pins exact totals against recorded event streams, proves idempotence and order-invariance via property-based tests (fast-check), and enforces the `Usage` contract identically across all three built-in providers.
+
+Frozen fixtures cannot detect a provider changing its wire format. This is mitigated by an optional **shape-only live test** ([`test/live/shape.live.test.ts`](test/live/shape.live.test.ts)) that calls real APIs and asserts the usage *shape* still holds — gated behind `TOKENFLOW_LIVE=1` and valid keys, skipped in the standard suite, and [run nightly in CI](.github/workflows/nightly-live.yml).
+
+### Implementation Notes
+
+- **`node:sqlite` over `better-sqlite3`:** Node 22.5+ ships a synchronous SQLite implementation with FTS5, eliminating the native module compilation step. Isolated in [`src/history/store.ts`](src/history/store.ts) should a different driver be preferred.
 
 ## Development
 
 ```bash
-npm install
-npm test          # offline suite
-npm run typecheck
-npm run build
+npm install           # Install dependencies
+npm test              # Run the offline test suite (120+ tests)
+npm run typecheck     # TypeScript type checking
+npm run build         # Compile to dist/
 ```
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[MIT](LICENSE)
