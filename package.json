@@ -1,7 +1,7 @@
 {
   "name": "@vinayparit005/tokenflow",
   "version": "0.1.0",
-  "description": "Terminal CLI for chatting with multiple LLM providers with accurate, live cost tracking.",
+  "description": "Stop guessing your AI bill. Chat with any provider from the terminal and track request-level costs as you go....",
   "type": "module",
   "license": "MIT",
   "author": "vinayparit007-png",
